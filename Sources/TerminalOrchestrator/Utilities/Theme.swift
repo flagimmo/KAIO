@@ -27,9 +27,16 @@ public enum Theme {
     // MARK: - Sizes
 
     public enum Sizes {
+        // Sidebar dimensions
         static let sidebarWidth: Double = 250
+        static let sidebarMinWidth: Double = 150
+        static let sidebarMaxWidth: Double = 500
+
+        // Content dimensions
         static let minContentWidth: Double = 400
         static let minContentHeight: Double = 300
+
+        // Window dimensions
         static let minWindowWidth: Double = 800
         static let minWindowHeight: Double = 600
     }

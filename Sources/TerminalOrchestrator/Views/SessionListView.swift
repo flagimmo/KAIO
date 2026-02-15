@@ -9,6 +9,7 @@ struct SessionListView: View {
     @Binding var selectedSession: Session?
     let onNewSession: () -> Void
     let onDeleteSession: (Session) -> Void
+    let width: Double
 
     // MARK: - Body
 
@@ -16,18 +17,28 @@ struct SessionListView: View {
         VStack(alignment: .leading, spacing: Theme.Spacing.medium) {
             header
             sessionList
+            Spacer()
             newSessionButton
         }
         .padding(Theme.Spacing.large)
-        .frame(width: Theme.Sizes.sidebarWidth)
+        .frame(width: width)
     }
 
     // MARK: - View Components
 
     private var header: some View {
-        Text("Sessions")
-            .fontSize(Theme.FontSizes.subheader)
-            .bold()
+        HStack {
+            Text("Sessions")
+                .fontSize(Theme.FontSizes.subheader)
+                .bold()
+
+            Spacer()
+
+            // Show current width for debugging (optional)
+            Text("\(Int(width))px")
+                .fontSize(Theme.FontSizes.tiny)
+                .foregroundColor(Theme.Colors.timestamp)
+        }
     }
 
     private var sessionList: some View {
