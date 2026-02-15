@@ -3,6 +3,15 @@ import Foundation
 /// Manages process execution and lifecycle for terminal sessions
 class ProcessManager: ObservableObject {
 
+    // MARK: - Constants
+
+    private enum Constants {
+        static let restartDelay: TimeInterval = 0.5
+        static let envExecutable = "/usr/bin/env"
+    }
+
+    // MARK: - Public Methods
+
     /// Start a session's process
     func startSession(_ session: Session) {
         guard session.status != .running else {
@@ -10,76 +19,11 @@ class ProcessManager: ObservableObject {
             return
         }
 
-        let process = Process()
-        let outputPipe = Pipe()
-        let errorPipe = Pipe()
-        let inputPipe = Pipe()
+        let process = createProcess(for: session)
+        let pipes = setupPipes(for: session, process: process)
 
-        // Configure process
-        process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
-        var arguments = [session.tool.command] + session.tool.arguments
-        process.arguments = arguments
-
-        // Set working directory if specified
-        if let workingDir = session.tool.workingDirectory {
-            process.currentDirectoryURL = URL(fileURLWithPath: workingDir)
-        }
-
-        // Set environment variables
-        var environment = ProcessInfo.processInfo.environment
-        for (key, value) in session.tool.environmentVariables {
-            environment[key] = value
-        }
-        process.environment = environment
-
-        // Setup input/output handling
-        process.standardInput = inputPipe
-        process.standardOutput = outputPipe
-        process.standardError = errorPipe
-
-        // Capture stdout
-        outputPipe.fileHandleForReading.readabilityHandler = { [weak session] handle in
-            let data = handle.availableData
-            if !data.isEmpty, let output = String(data: data, encoding: .utf8) {
-                DispatchQueue.main.async {
-                    session?.addOutput(output.trimmingCharacters(in: .newlines), type: .stdout)
-                }
-            }
-        }
-
-        // Capture stderr
-        errorPipe.fileHandleForReading.readabilityHandler = { [weak session] handle in
-            let data = handle.availableData
-            if !data.isEmpty, let output = String(data: data, encoding: .utf8) {
-                DispatchQueue.main.async {
-                    session?.addOutput(output.trimmingCharacters(in: .newlines), type: .stderr)
-                }
-            }
-        }
-
-        // Handle process termination
-        process.terminationHandler = { [weak session] process in
-            DispatchQueue.main.async {
-                if process.terminationStatus == 0 {
-                    session?.status = .stopped
-                    session?.addOutput("Process exited with code 0", type: .system)
-                } else {
-                    session?.status = .error
-                    session?.addOutput("Process exited with code \(process.terminationStatus)", type: .system)
-                }
-            }
-        }
-
-        do {
-            try process.run()
-            session.process = process
-            session.status = .running
-            session.startTime = Date()
-            session.addOutput("Started: \(session.tool.command) \(session.tool.arguments.joined(separator: " "))", type: .system)
-        } catch {
-            session.status = .error
-            session.addOutput("Failed to start process: \(error.localizedDescription)", type: .system)
-        }
+        configureProcessTermination(process, session: session)
+        executeProcess(process, session: session)
     }
 
     /// Stop a session's process
@@ -102,23 +46,101 @@ class ProcessManager: ObservableObject {
             return
         }
 
-        if let data = (input + "\n").data(using: .utf8) {
-            do {
-                try stdin.fileHandleForWriting.write(contentsOf: data)
-                session.addOutput("> \(input)", type: .system)
-            } catch {
-                session.addOutput("Failed to send input: \(error.localizedDescription)", type: .system)
-            }
+        guard let data = (input + "\n").data(using: .utf8) else {
+            session.addOutput("Failed to encode input", type: .system)
+            return
+        }
+
+        do {
+            try stdin.fileHandleForWriting.write(contentsOf: data)
+            session.addOutput("> \(input)", type: .system)
+        } catch {
+            session.addOutput("Failed to send input: \(error.localizedDescription)", type: .system)
         }
     }
 
     /// Restart a session
     func restartSession(_ session: Session) {
         stopSession(session)
-
-        // Wait a bit before restarting
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+        DispatchQueue.main.asyncAfter(deadline: .now() + Constants.restartDelay) { [weak self] in
             self?.startSession(session)
+        }
+    }
+
+    // MARK: - Private Methods
+
+    private func createProcess(for session: Session) -> Process {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: Constants.envExecutable)
+        process.arguments = [session.tool.command] + session.tool.arguments
+
+        if let workingDir = session.tool.workingDirectory {
+            process.currentDirectoryURL = URL(fileURLWithPath: workingDir)
+        }
+
+        process.environment = buildEnvironment(for: session.tool)
+        return process
+    }
+
+    private func buildEnvironment(for tool: CLITool) -> [String: String] {
+        var environment = ProcessInfo.processInfo.environment
+        tool.environmentVariables.forEach { environment[$0.key] = $0.value }
+        return environment
+    }
+
+    private struct ProcessPipes {
+        let input: Pipe
+        let output: Pipe
+        let error: Pipe
+    }
+
+    private func setupPipes(for session: Session, process: Process) -> ProcessPipes {
+        let pipes = ProcessPipes(input: Pipe(), output: Pipe(), error: Pipe())
+
+        process.standardInput = pipes.input
+        process.standardOutput = pipes.output
+        process.standardError = pipes.error
+
+        setupOutputHandler(pipe: pipes.output, session: session, type: .stdout)
+        setupOutputHandler(pipe: pipes.error, session: session, type: .stderr)
+
+        return pipes
+    }
+
+    private func setupOutputHandler(pipe: Pipe, session: Session, type: OutputType) {
+        pipe.fileHandleForReading.readabilityHandler = { [weak session] handle in
+            let data = handle.availableData
+            guard !data.isEmpty,
+                  let output = String(data: data, encoding: .utf8) else { return }
+
+            DispatchQueue.main.async {
+                session?.addOutput(output.trimmingCharacters(in: .newlines), type: type)
+            }
+        }
+    }
+
+    private func configureProcessTermination(_ process: Process, session: Session) {
+        process.terminationHandler = { [weak session] process in
+            DispatchQueue.main.async {
+                let exitCode = process.terminationStatus
+                session?.status = exitCode == 0 ? .stopped : .error
+                session?.addOutput("Process exited with code \(exitCode)", type: .system)
+            }
+        }
+    }
+
+    private func executeProcess(_ process: Process, session: Session) {
+        do {
+            try process.run()
+            session.process = process
+            session.status = .running
+            session.startTime = Date()
+
+            let command = "\(session.tool.command) \(session.tool.arguments.joined(separator: " "))"
+            session.addOutput("Started: \(command)", type: .system)
+        } catch {
+            session.status = .error
+            session.addOutput("Failed to start process: \(error.localizedDescription)", type: .system)
         }
     }
 }

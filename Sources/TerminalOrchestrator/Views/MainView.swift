@@ -2,45 +2,56 @@ import SwiftCrossUI
 
 /// Main view containing the session list and detail view
 struct MainView: View {
+
+    // MARK: - Properties
+
     @ObservedObject var appState: AppState
     @ObservedObject var processManager: ProcessManager
 
+    // MARK: - Body
+
     var body: some View {
         HStack(spacing: 0) {
-            // Sidebar with session list
-            SessionListView(
-                sessions: $appState.sessions,
-                selectedSession: $appState.selectedSession,
-                onNewSession: {
-                    appState.createNewSession()
-                },
-                onDeleteSession: { session in
-                    appState.deleteSession(session)
-                }
-            )
-
-            // Divider
+            sidebar
             Divider()
+            contentArea
+        }
+    }
 
-            // Main content area
+    // MARK: - View Components
+
+    private var sidebar: some View {
+        SessionListView(
+            sessions: $appState.sessions,
+            selectedSession: $appState.selectedSession,
+            onNewSession: { appState.createNewSession() },
+            onDeleteSession: { appState.deleteSession($0) }
+        )
+    }
+
+    private var contentArea: some View {
+        Group {
             if let selectedSession = appState.selectedSession {
                 SessionDetailView(
                     session: selectedSession,
                     processManager: processManager
                 )
             } else {
-                // Empty state
-                VStack(spacing: 16) {
-                    Text("No session selected")
-                        .fontSize(18)
-                        .foregroundColor(Color(red: 0.6, green: 0.6, blue: 0.6, opacity: 1.0))
-
-                    Text("Create a new session or select an existing one")
-                        .fontSize(14)
-                        .foregroundColor(Color(red: 0.5, green: 0.5, blue: 0.5, opacity: 1.0))
-                }
-                .frame(minWidth: 400, minHeight: 300)
+                emptyState
             }
         }
+    }
+
+    private var emptyState: some View {
+        VStack(spacing: Theme.Spacing.extraLarge) {
+            Text("No session selected")
+                .fontSize(Theme.FontSizes.header)
+                .foregroundColor(Theme.Colors.emptyStateText)
+
+            Text("Create a new session or select an existing one")
+                .fontSize(Theme.FontSizes.body)
+                .foregroundColor(Theme.Colors.emptyStateSubtext)
+        }
+        .frame(minWidth: Theme.Sizes.minContentWidth, minHeight: Theme.Sizes.minContentHeight)
     }
 }
