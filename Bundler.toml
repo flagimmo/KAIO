@@ -1,0 +1,49 @@
+# Swift Bundler Configuration for Terminal Orchestrator
+# Documentation: https://swiftbundler.dev/
+
+[apps.TerminalOrchestrator]
+# The product name from Package.swift
+product = "TerminalOrchestrator"
+
+# App version
+version = "0.1.0"
+
+# Unique bundle identifier (reverse domain notation)
+bundle_identifier = "com.kaio.terminalorchestrator"
+
+# App category for macOS
+# Options: public.app-category.business, public.app-category.developer-tools,
+#          public.app-category.education, public.app-category.entertainment,
+#          public.app-category.finance, public.app-category.games,
+#          public.app-category.graphics-design, public.app-category.healthcare-fitness,
+#          public.app-category.lifestyle, public.app-category.medical,
+#          public.app-category.music, public.app-category.news,
+#          public.app-category.photography, public.app-category.productivity,
+#          public.app-category.reference, public.app-category.social-networking,
+#          public.app-category.sports, public.app-category.travel,
+#          public.app-category.utilities, public.app-category.video,
+#          public.app-category.weather
+category = "public.app-category.developer-tools"
+
+# Minimum macOS version required
+minimum_macos_version = "11.0"
+
+# Optional: App icon (uncomment and create AppIcon.icns to use)
+# icon = "AppIcon.icns"
+
+# Additional Info.plist entries
+[apps.TerminalOrchestrator.extra_plist_entries]
+# App display name
+CFBundleDisplayName = "Terminal Orchestrator"
+
+# Short version string (shown to users)
+CFBundleShortVersionString = "0.1.0"
+
+# Human-readable copyright
+NSHumanReadableCopyright = "Copyright © 2026 KAIO. All rights reserved."
+
+# High resolution support
+NSHighResolutionCapable = true
+
+# App category description
+LSApplicationCategoryType = "public.app-category.developer-tools"
