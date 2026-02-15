@@ -176,8 +176,39 @@ final class SessionManagerTests: XCTestCase {
         do {
             _ = try await sessionManager.executeCommand("echo test", in: fakeId)
             XCTFail("Should throw error for non-existent session")
+        } catch SessionError.sessionNotFound {
+            // Expected error
         } catch {
-            XCTAssertTrue(error is SessionError)
+            XCTFail("Wrong error type: \(error)")
+        }
+    }
+
+    func testExecuteEmptyCommand() async {
+        let session = sessionManager.createSession(name: "Test")
+
+        do {
+            _ = try await sessionManager.executeCommand("   ", in: session.id)
+            XCTFail("Should throw error for empty command")
+        } catch SessionError.emptyCommand {
+            // Expected error
+        } catch {
+            XCTFail("Wrong error type: \(error)")
+        }
+    }
+
+    func testExecuteCommandWithInvalidWorkingDirectory() async {
+        let session = sessionManager.createSession(name: "Test")
+        var modifiedSession = session
+        modifiedSession.workingDirectory = "/nonexistent/path/that/doesnt/exist"
+        sessionManager.updateSession(modifiedSession)
+
+        do {
+            _ = try await sessionManager.executeCommand("pwd", in: session.id)
+            XCTFail("Should throw error for invalid working directory")
+        } catch SessionError.invalidWorkingDirectory {
+            // Expected error
+        } catch {
+            XCTFail("Wrong error type: \(error)")
         }
     }
 

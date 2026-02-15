@@ -50,10 +50,10 @@ final class SessionManager {
     func deleteSession(_ sessionId: UUID) {
         sessions.removeValue(forKey: sessionId)
 
-        for i in 0..<projects.count {
-            projects[i].removeSession(sessionId)
-        }
+        // Remove from all projects
+        projects.indices.forEach { projects[$0].removeSession(sessionId) }
 
+        // Update active session if deleted
         if activeSessionId == sessionId {
             activeSessionId = sessions.keys.first
         }
@@ -63,6 +63,7 @@ final class SessionManager {
 
     func updateSession(_ session: Session) {
         sessions[session.id] = session
+        saveToDisk()
     }
 
     func getSession(_ sessionId: UUID) -> Session? {
@@ -75,13 +76,12 @@ final class SessionManager {
     }
 
     func setActiveSession(_ sessionId: UUID) {
-        guard sessions[sessionId] != nil else { return }
-        activeSessionId = sessionId
+        guard var session = sessions[sessionId] else { return }
 
-        if var session = sessions[sessionId] {
-            session.lastAccessedAt = Date()
-            sessions[sessionId] = session
-        }
+        activeSessionId = sessionId
+        session.lastAccessedAt = Date()
+        sessions[sessionId] = session
+        saveToDisk()
     }
 
     // MARK: - Project Management
@@ -100,14 +100,14 @@ final class SessionManager {
 
         let project = projects[projectIndex]
 
-        for sessionId in project.sessionIds {
-            sessions.removeValue(forKey: sessionId)
-        }
+        // Delete all sessions in project
+        project.sessionIds.forEach { sessions.removeValue(forKey: $0) }
 
+        // Remove project
         projects.remove(at: projectIndex)
 
-        if let deletedSessionId = project.sessionIds.first,
-           activeSessionId == deletedSessionId {
+        // Update active session if any deleted session was active
+        if let activeId = activeSessionId, project.sessionIds.contains(activeId) {
             activeSessionId = sessions.keys.first
         }
 
@@ -131,20 +131,31 @@ final class SessionManager {
     }
 
     func moveSession(_ sessionId: UUID, to projectId: UUID) {
-        for i in 0..<projects.count {
-            projects[i].removeSession(sessionId)
-        }
+        // Remove from all projects
+        projects.indices.forEach { projects[$0].removeSession(sessionId) }
 
+        // Add to target project
         if let projectIndex = projects.firstIndex(where: { $0.id == projectId }) {
             projects[projectIndex].addSession(sessionId)
         }
+
+        saveToDisk()
     }
 
     // MARK: - Command Execution
 
     func executeCommand(_ commandText: String, in sessionId: UUID) async throws -> Command {
+        guard !commandText.trimmingCharacters(in: .whitespaces).isEmpty else {
+            throw SessionError.emptyCommand
+        }
+
         guard var session = sessions[sessionId] else {
             throw SessionError.sessionNotFound
+        }
+
+        // Validate working directory exists
+        guard FileManager.default.fileExists(atPath: session.workingDirectory) else {
+            throw SessionError.invalidWorkingDirectory
         }
 
         let process = Process()
@@ -153,7 +164,8 @@ final class SessionManager {
         process.standardOutput = pipe
         process.standardError = pipe
         process.executableURL = URL(fileURLWithPath: "/bin/bash")
-        process.arguments = ["-c", "cd \(session.workingDirectory) && \(commandText)"]
+        // Use proper escaping to prevent command injection
+        process.arguments = ["-c", "cd \(session.workingDirectory.shellEscaped()) && \(commandText)"]
 
         try process.run()
         process.waitUntilExit()
@@ -215,4 +227,23 @@ final class SessionManager {
 enum SessionError: Error {
     case sessionNotFound
     case invalidWorkingDirectory
+    case emptyCommand
+}
+
+// MARK: - String Extension for Shell Safety
+
+private extension String {
+    /// Returns a shell-escaped version of the string
+    func shellEscaped() -> String {
+        guard !isEmpty else { return "''" }
+
+        // If string only contains safe characters, return as-is
+        let safeCharacters = CharacterSet.alphanumerics.union(CharacterSet(charactersIn: "._-/"))
+        if rangeOfCharacter(from: safeCharacters.inverted) == nil {
+            return self
+        }
+
+        // Otherwise, wrap in single quotes and escape any existing single quotes
+        return "'" + replacingOccurrences(of: "'", with: "'\\''") + "'"
+    }
 }

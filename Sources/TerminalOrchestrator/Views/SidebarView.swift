@@ -2,12 +2,7 @@ import SwiftCrossUI
 
 struct SidebarView: View {
     @Environment(SessionManager.self) private var sessionManager
-
-    @State private var newProjectName = ""
-    @State private var newSessionName = ""
     @State private var selectedProjectId: UUID?
-    @State private var showingNewProjectDialog = false
-    @State private var showingNewSessionDialog = false
 
     var body: some View {
         VStack {
@@ -17,7 +12,7 @@ struct SidebarView: View {
                     .bold()
                 Spacer()
                 Button("+") {
-                    showingNewProjectDialog = true
+                    createNewProject()
                 }
             }
             .padding(8)
@@ -41,8 +36,7 @@ struct SidebarView: View {
                                 sessionManager.deleteProject(project.id)
                             },
                             onNewSession: {
-                                selectedProjectId = project.id
-                                showingNewSessionDialog = true
+                                createNewSession(in: project.id)
                             }
                         )
 
@@ -70,6 +64,17 @@ struct SidebarView: View {
             Spacer()
         }
         .frame(minWidth: 250, maxWidth: 300)
+    }
+
+    // MARK: - Actions
+
+    private func createNewProject() {
+        let project = sessionManager.createProject(name: "New Project")
+        selectedProjectId = project.id
+    }
+
+    private func createNewSession(in projectId: UUID) {
+        _ = sessionManager.createSession(name: "New Session", in: projectId)
     }
 }
 

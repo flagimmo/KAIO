@@ -13,7 +13,10 @@ final class PersistenceService {
     // MARK: - Storage Paths
 
     private var documentsDirectory: URL {
-        fileManager.urls(for: .documentDirectory, in: .userDomainMask)[0]
+        guard let url = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first else {
+            fatalError("Unable to access documents directory")
+        }
+        return url
     }
 
     private var storageDirectory: URL {
@@ -56,12 +59,8 @@ final class PersistenceService {
         let data = try Data(contentsOf: sessionsFileURL)
         let sessionsArray = try decoder.decode([Session].self, from: data)
 
-        var sessions: [UUID: Session] = [:]
-        for session in sessionsArray {
-            sessions[session.id] = session
-        }
-
-        return sessions
+        // Convert array to dictionary using reduce (DRY)
+        return sessionsArray.reduce(into: [:]) { $0[$1.id] = $1 }
     }
 
     /// Save projects to disk

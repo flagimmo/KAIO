@@ -6,6 +6,7 @@ struct SessionDetailView: View {
 
     @State private var commandInput = ""
     @State private var isExecuting = false
+    @State private var errorMessage: String?
 
     var session: Session? {
         sessionManager.getSession(sessionId)
@@ -49,6 +50,22 @@ struct SessionDetailView: View {
 
             // Command Input Area
             VStack(spacing: 8) {
+                // Error message
+                if let error = errorMessage {
+                    HStack {
+                        Text("⚠️ \(error)")
+                            .foregroundColor(.red)
+                            .font(.caption)
+                        Spacer()
+                        Button("✕") {
+                            errorMessage = nil
+                        }
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 4)
+                    .background(Color.red.opacity(0.1))
+                }
+
                 HStack {
                     Text("$")
                         .bold()
@@ -77,14 +94,20 @@ struct SessionDetailView: View {
         let command = commandInput
         commandInput = ""
         isExecuting = true
+        errorMessage = nil
 
         Task {
             do {
                 _ = try await sessionManager.executeCommand(command, in: sessionId)
+            } catch SessionError.sessionNotFound {
+                errorMessage = "Session not found"
             } catch {
-                print("Error executing command: \(error)")
+                errorMessage = "Command failed: \(error.localizedDescription)"
             }
-            isExecuting = false
+
+            await MainActor.run {
+                isExecuting = false
+            }
         }
     }
 }
