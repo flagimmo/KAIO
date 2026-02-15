@@ -1,7 +1,7 @@
 import Foundation
 
 /// Manages process execution and lifecycle for terminal sessions
-class ProcessManager: ObservableObject {
+public class ProcessManager: ObservableObject {
 
     // MARK: - Constants
 
@@ -10,10 +10,14 @@ class ProcessManager: ObservableObject {
         static let envExecutable = "/usr/bin/env"
     }
 
+    // MARK: - Initialization
+
+    public init() {}
+
     // MARK: - Public Methods
 
     /// Start a session's process
-    func startSession(_ session: Session) {
+    public func startSession(_ session: Session) {
         guard session.status != .running else {
             session.addOutput("Session is already running", type: .system)
             return
@@ -27,7 +31,7 @@ class ProcessManager: ObservableObject {
     }
 
     /// Stop a session's process
-    func stopSession(_ session: Session) {
+    public func stopSession(_ session: Session) {
         guard let process = session.process, process.isRunning else {
             session.addOutput("No running process to stop", type: .system)
             return
@@ -38,7 +42,7 @@ class ProcessManager: ObservableObject {
     }
 
     /// Send input to a session's process
-    func sendInput(_ input: String, to session: Session) {
+    public func sendInput(_ input: String, to session: Session) {
         guard let process = session.process,
               process.isRunning,
               let stdin = process.standardInput as? Pipe else {
@@ -60,7 +64,7 @@ class ProcessManager: ObservableObject {
     }
 
     /// Restart a session
-    func restartSession(_ session: Session) {
+    public func restartSession(_ session: Session) {
         stopSession(session)
         DispatchQueue.main.asyncAfter(deadline: .now() + Constants.restartDelay) { [weak self] in
             self?.startSession(session)

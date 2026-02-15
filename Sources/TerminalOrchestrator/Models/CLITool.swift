@@ -1,15 +1,15 @@
 import Foundation
 
 /// Represents a CLI tool configuration (Claude Code, Gemini CLI, etc.)
-struct CLITool: Identifiable, Codable {
-    let id: UUID
-    let name: String
-    let command: String
-    let arguments: [String]
-    let workingDirectory: String?
-    let environmentVariables: [String: String]
+public struct CLITool: Identifiable, Codable {
+    public let id: UUID
+    public let name: String
+    public let command: String
+    public let arguments: [String]
+    public let workingDirectory: String?
+    public let environmentVariables: [String: String]
 
-    init(
+    public init(
         id: UUID = UUID(),
         name: String,
         command: String,
@@ -26,7 +26,7 @@ struct CLITool: Identifiable, Codable {
     }
 
     /// Predefined CLI tools
-    static let presets: [CLITool] = [
+    public static let presets: [CLITool] = [
         CLITool(
             name: "Claude Code",
             command: "claude",

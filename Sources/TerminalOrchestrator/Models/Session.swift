@@ -1,22 +1,22 @@
 import Foundation
 
 /// Represents a terminal session running a CLI tool
-class Session: Identifiable, ObservableObject {
+public class Session: Identifiable, ObservableObject {
 
     // MARK: - Properties
 
-    let id: UUID
-    let tool: CLITool
+    public let id: UUID
+    public let tool: CLITool
 
-    @Published var status: SessionStatus
-    @Published var output: [OutputLine]
-    @Published var startTime: Date?
+    @Published public var status: SessionStatus
+    @Published public var output: [OutputLine]
+    @Published public var startTime: Date?
 
-    var process: Process?
+    public var process: Process?
 
     // MARK: - Initialization
 
-    init(
+    public init(
         id: UUID = UUID(),
         tool: CLITool,
         status: SessionStatus = .idle
@@ -30,25 +30,25 @@ class Session: Identifiable, ObservableObject {
 
     // MARK: - Public Methods
 
-    func addOutput(_ text: String, type: OutputType = .stdout) {
+    public func addOutput(_ text: String, type: OutputType = .stdout) {
         output.append(OutputLine(text: text, type: type))
     }
 
-    func clearOutput() {
+    public func clearOutput() {
         output.removeAll()
     }
 
     // MARK: - Computed Properties
 
-    var displayName: String {
+    public var displayName: String {
         tool.name
     }
 
-    var statusIcon: String {
+    public var statusIcon: String {
         status.icon
     }
 
-    var isRunning: Bool {
+    public var isRunning: Bool {
         status == .running
     }
 }
@@ -56,13 +56,13 @@ class Session: Identifiable, ObservableObject {
 // MARK: - Session Status
 
 /// Session status
-enum SessionStatus: String, Codable {
+public enum SessionStatus: String, Codable {
     case idle = "Idle"
     case running = "Running"
     case stopped = "Stopped"
     case error = "Error"
 
-    var icon: String {
+    public var icon: String {
         switch self {
         case .idle: return "⚪️"
         case .running: return "🟢"
@@ -75,7 +75,7 @@ enum SessionStatus: String, Codable {
 // MARK: - Output Type
 
 /// Output line type
-enum OutputType: String, Codable {
+public enum OutputType: String, Codable {
     case stdout
     case stderr
     case system
@@ -84,13 +84,13 @@ enum OutputType: String, Codable {
 // MARK: - Output Line
 
 /// Individual output line
-struct OutputLine: Identifiable {
-    let id: UUID
-    let text: String
-    let type: OutputType
-    let timestamp: Date
+public struct OutputLine: Identifiable {
+    public let id: UUID
+    public let text: String
+    public let type: OutputType
+    public let timestamp: Date
 
-    init(
+    public init(
         id: UUID = UUID(),
         text: String,
         type: OutputType,
@@ -102,11 +102,11 @@ struct OutputLine: Identifiable {
         self.timestamp = timestamp
     }
 
-    var formattedTime: String {
+    public var formattedTime: String {
         Self.timeFormatter.string(from: timestamp)
     }
 
-    private static let timeFormatter: DateFormatter = {
+    public static let timeFormatter: DateFormatter = {
         let formatter = DateFormatter()
         formatter.dateFormat = "HH:mm:ss"
         return formatter

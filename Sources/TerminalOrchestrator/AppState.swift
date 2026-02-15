@@ -3,16 +3,16 @@ import SwiftCrossUI
 // MARK: - App State
 
 /// Global application state
-class AppState: ObservableObject {
+public class AppState: ObservableObject {
 
     // MARK: - Published Properties
 
-    @Published var sessions: [Session] = []
-    @Published var selectedSession: Session?
+    @Published public var sessions: [Session] = []
+    @Published public var selectedSession: Session?
 
     // MARK: - Initialization
 
-    init(createDemoSession: Bool = true) {
+    public init(createDemoSession: Bool = true) {
         if createDemoSession {
             setupDemoSession()
         }
@@ -21,7 +21,7 @@ class AppState: ObservableObject {
     // MARK: - Public Methods
 
     /// Create a new session from a tool preset
-    func createNewSession(tool: CLITool? = nil) {
+    public func createNewSession(tool: CLITool? = nil) {
         let selectedTool = tool ?? defaultTool
         let newSession = Session(tool: selectedTool)
 
@@ -30,7 +30,7 @@ class AppState: ObservableObject {
     }
 
     /// Delete a session
-    func deleteSession(_ session: Session) {
+    public func deleteSession(_ session: Session) {
         terminateSessionProcess(session)
         removeSession(session)
         updateSelectionAfterDeletion(session)
@@ -71,32 +71,5 @@ class AppState: ObservableObject {
             command: "bash",
             arguments: ["-l"]
         )
-    }
-}
-
-// MARK: - Main App
-
-/// Main application definition
-@main
-struct OrchestratorApp: App {
-
-    // MARK: - State
-
-    @StateObject private var appState = AppState()
-    @StateObject private var processManager = ProcessManager()
-
-    // MARK: - Scene
-
-    var body: some Scene {
-        WindowGroup("Terminal Orchestrator") {
-            MainView(
-                appState: appState,
-                processManager: processManager
-            )
-            .frame(
-                minWidth: Theme.Sizes.minWindowWidth,
-                minHeight: Theme.Sizes.minWindowHeight
-            )
-        }
     }
 }

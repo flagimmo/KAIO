@@ -1,11 +1,11 @@
 import SwiftCrossUI
 
 /// Centralized theme constants for consistent UI
-enum Theme {
+public enum Theme {
 
     // MARK: - Colors
 
-    enum Colors {
+    public enum Colors {
         // Status colors
         static let running = Color(red: 0, green: 0.8, blue: 0, opacity: 1.0)
         static let error = Color(red: 0.8, green: 0, blue: 0, opacity: 1.0)
@@ -26,7 +26,7 @@ enum Theme {
 
     // MARK: - Sizes
 
-    enum Sizes {
+    public enum Sizes {
         static let sidebarWidth: Double = 250
         static let minContentWidth: Double = 400
         static let minContentHeight: Double = 300
@@ -36,7 +36,7 @@ enum Theme {
 
     // MARK: - Font Sizes
 
-    enum FontSizes {
+    public enum FontSizes {
         static let header: Int = 18
         static let subheader: Int = 16
         static let body: Int = 14
@@ -47,7 +47,7 @@ enum Theme {
 
     // MARK: - Spacing
 
-    enum Spacing {
+    public enum Spacing {
         static let tiny: Double = 2
         static let small: Double = 4
         static let medium: Double = 8
