@@ -1,115 +1,126 @@
 import SwiftCrossUI
 
-/// Displays the details and output of a single terminal session
 struct SessionDetailView: View {
+    @Environment(SessionManager.self) private var sessionManager
+    let sessionId: UUID
 
-    // MARK: - Properties
+    @State private var commandInput = ""
+    @State private var isExecuting = false
 
-    @ObservedObject var session: Session
-    @ObservedObject var processManager: ProcessManager
-    @State var inputText: String = ""
-
-    // MARK: - Body
+    var session: Session? {
+        sessionManager.getSession(sessionId)
+    }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            toolbar
-            outputArea
-            if session.isRunning {
-                inputArea
+        VStack(spacing: 0) {
+            // Header
+            HStack {
+                if let session = session {
+                    Text("📺 \(session.name)")
+                        .bold()
+                    Spacer()
+                    Text("📂 \(session.workingDirectory)")
+                        .foregroundColor(.secondary)
+                    Spacer()
+                    Text("\(session.commandCount) commands")
+                        .foregroundColor(.secondary)
+                } else {
+                    Text("No session selected")
+                        .foregroundColor(.secondary)
+                }
+            }
+            .padding(12)
+            .background(Color.gray.opacity(0.1))
+
+            // Output Area
+            ScrollView {
+                VStack(alignment: .leading, spacing: 8) {
+                    if let session = session {
+                        ForEach(session.history) { command in
+                            CommandOutputView(command: command)
+                        }
+                    }
+                }
+                .padding(12)
+            }
+            .frame(minHeight: 300)
+
+            Spacer()
+
+            // Command Input Area
+            VStack(spacing: 8) {
+                HStack {
+                    Text("$")
+                        .bold()
+                        .foregroundColor(.green)
+
+                    TextField("Enter command...", text: $commandInput)
+                        .disabled(isExecuting)
+                        .onSubmit {
+                            executeCommand()
+                        }
+
+                    Button(isExecuting ? "Running..." : "Run") {
+                        executeCommand()
+                    }
+                    .disabled(commandInput.isEmpty || isExecuting)
+                }
+                .padding(12)
+                .background(Color.gray.opacity(0.05))
             }
         }
     }
 
-    // MARK: - View Components
+    private func executeCommand() {
+        guard !commandInput.isEmpty, !isExecuting else { return }
 
-    private var toolbar: some View {
-        HStack(spacing: Theme.Spacing.large) {
-            Text(session.displayName)
-                .fontSize(Theme.FontSizes.header)
-                .bold()
+        let command = commandInput
+        commandInput = ""
+        isExecuting = true
 
-            Text("•")
-
-            Text(session.status.rawValue)
-                .foregroundColor(statusColor)
-
-            controlButtons
-        }
-        .padding(Theme.Spacing.large)
-    }
-
-    private var controlButtons: some View {
-        HStack(spacing: Theme.Spacing.medium) {
-            if session.isRunning {
-                Button("Stop") { processManager.stopSession(session) }
-                Button("Restart") { processManager.restartSession(session) }
-            } else {
-                Button("Start") { processManager.startSession(session) }
+        Task {
+            do {
+                _ = try await sessionManager.executeCommand(command, in: sessionId)
+            } catch {
+                print("Error executing command: \(error)")
             }
-            Button("Clear") { session.clearOutput() }
-        }
-    }
-
-    private var outputArea: some View {
-        VStack(alignment: .leading, spacing: Theme.Spacing.small) {
-            ForEach(session.output) { line in
-                OutputLineView(line: line)
-            }
-        }
-        .padding(Theme.Spacing.large)
-        .frame(minHeight: Theme.Sizes.minContentHeight)
-    }
-
-    private var inputArea: some View {
-        HStack(spacing: Theme.Spacing.medium) {
-            TextField("Enter command...", text: $inputText)
-                .padding(Theme.Spacing.medium)
-
-            Button("Send") {
-                processManager.sendInput(inputText, to: session)
-                inputText = ""
-            }
-            .padding(Theme.Spacing.medium)
-        }
-        .padding(Theme.Spacing.large)
-    }
-
-    // MARK: - Computed Properties
-
-    private var statusColor: Color {
-        switch session.status {
-        case .running: return Theme.Colors.running
-        case .error: return Theme.Colors.error
-        case .stopped: return Theme.Colors.stopped
-        case .idle: return Theme.Colors.idle
+            isExecuting = false
         }
     }
 }
 
-// MARK: - Output Line View
-
-/// Individual output line view
-struct OutputLineView: View {
-    let line: OutputLine
+struct CommandOutputView: View {
+    let command: Command
 
     var body: some View {
-        HStack(alignment: .top, spacing: Theme.Spacing.medium) {
-            Text(line.formattedTime)
-                .fontSize(Theme.FontSizes.tiny)
-                .foregroundColor(Theme.Colors.timestamp)
+        VStack(alignment: .leading, spacing: 4) {
+            // Command line
+            HStack {
+                Text("$ \(command.command)")
+                    .bold()
+                    .foregroundColor(.blue)
+                Spacer()
+                Text(command.timestamp.formatted(date: .omitted, time: .shortened))
+                    .foregroundColor(.secondary)
+                    .font(.caption)
+            }
 
-            Text(line.text)
-                .fontSize(Theme.FontSizes.caption)
-                .foregroundColor(lineColor)
-        }
-    }
+            // Output
+            if !command.output.isEmpty {
+                Text(command.output)
+                    .font(.system(.body, design: .monospaced))
+                    .foregroundColor(command.isSuccess ? .primary : .red)
+                    .padding(8)
+                    .background(Color.gray.opacity(0.1))
+            }
 
-    private var lineColor: Color {
-        switch line.type {
-        case .stdout: return Theme.Colors.stdout
-        case .stderr: return Theme.Colors.stderr
-        case .system: return Theme.Colors.system
+            // Exit code indicator
+            if !command.isSuccess {
+                Text("Exit code: \(command.exitCode)")
+                    .foregroundColor(.red)
+                    .font(.caption)
+            }
         }
+        .padding(.vertical, 4)
     }
 }

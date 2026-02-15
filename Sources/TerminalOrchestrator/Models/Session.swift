@@ -1,114 +1,44 @@
 import Foundation
 
-/// Represents a terminal session running a CLI tool
-public class Session: Identifiable, ObservableObject {
+/// Represents a terminal session with command history
+struct Session: Identifiable, Codable, Equatable {
+    let id: UUID
+    var name: String
+    var workingDirectory: String
+    var history: [Command]
+    var createdAt: Date
+    var lastAccessedAt: Date
 
-    // MARK: - Properties
-
-    public let id: UUID
-    public let tool: CLITool
-
-    @Published public var status: SessionStatus
-    @Published public var output: [OutputLine]
-    @Published public var startTime: Date?
-
-    public var process: Process?
-
-    // MARK: - Initialization
-
-    public init(
+    init(
         id: UUID = UUID(),
-        tool: CLITool,
-        status: SessionStatus = .idle
+        name: String,
+        workingDirectory: String = FileManager.default.currentDirectoryPath,
+        history: [Command] = [],
+        createdAt: Date = Date(),
+        lastAccessedAt: Date = Date()
     ) {
         self.id = id
-        self.tool = tool
-        self.status = status
-        self.output = []
-        self.startTime = nil
+        self.name = name
+        self.workingDirectory = workingDirectory
+        self.history = history
+        self.createdAt = createdAt
+        self.lastAccessedAt = lastAccessedAt
     }
 
-    // MARK: - Public Methods
-
-    public func addOutput(_ text: String, type: OutputType = .stdout) {
-        output.append(OutputLine(text: text, type: type))
+    var lastCommand: Command? {
+        history.last
     }
 
-    public func clearOutput() {
-        output.removeAll()
+    var commandCount: Int {
+        history.count
     }
 
-    // MARK: - Computed Properties
-
-    public var displayName: String {
-        tool.name
+    mutating func addCommand(_ command: Command) {
+        history.append(command)
+        lastAccessedAt = Date()
     }
 
-    public var statusIcon: String {
-        status.icon
+    mutating func clearHistory() {
+        history.removeAll()
     }
-
-    public var isRunning: Bool {
-        status == .running
-    }
-}
-
-// MARK: - Session Status
-
-/// Session status
-public enum SessionStatus: String, Codable {
-    case idle = "Idle"
-    case running = "Running"
-    case stopped = "Stopped"
-    case error = "Error"
-
-    public var icon: String {
-        switch self {
-        case .idle: return "⚪️"
-        case .running: return "🟢"
-        case .stopped: return "🔴"
-        case .error: return "⚠️"
-        }
-    }
-}
-
-// MARK: - Output Type
-
-/// Output line type
-public enum OutputType: String, Codable {
-    case stdout
-    case stderr
-    case system
-}
-
-// MARK: - Output Line
-
-/// Individual output line
-public struct OutputLine: Identifiable {
-    public let id: UUID
-    public let text: String
-    public let type: OutputType
-    public let timestamp: Date
-
-    public init(
-        id: UUID = UUID(),
-        text: String,
-        type: OutputType,
-        timestamp: Date = Date()
-    ) {
-        self.id = id
-        self.text = text
-        self.type = type
-        self.timestamp = timestamp
-    }
-
-    public var formattedTime: String {
-        Self.timeFormatter.string(from: timestamp)
-    }
-
-    public static let timeFormatter: DateFormatter = {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "HH:mm:ss"
-        return formatter
-    }()
 }
