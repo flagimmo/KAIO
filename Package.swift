@@ -16,8 +16,7 @@ let package = Package(
             dependencies: [
                 .product(name: "SwiftCrossUI", package: "swift-cross-ui")
             ],
-            path: "Sources/TerminalOrchestrator",
-            exclude: ["OrchestratorApp.swift"]
+            path: "Sources/TerminalOrchestrator"
         ),
         // Executable app
         .executableTarget(
