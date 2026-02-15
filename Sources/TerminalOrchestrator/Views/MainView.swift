@@ -9,7 +9,7 @@ struct MainView: View {
     @ObservedObject var processManager: ProcessManager
 
     // Resizable sidebar state
-    @State private var sidebarWidth: Double = Theme.Sizes.sidebarWidth
+    @State private var sidebarWidth: Double = UserDefaults.standard.sidebarWidth
     @State private var isDragging: Bool = false
 
     // MARK: - Body
@@ -19,6 +19,10 @@ struct MainView: View {
             sidebar
             resizableDivider
             contentArea
+        }
+        .onAppear {
+            // Load saved sidebar width on app start
+            loadSidebarWidth()
         }
     }
 
@@ -42,17 +46,70 @@ struct MainView: View {
                 // Visual feedback on hover (cursor would change in native app)
             }
             .gesture(
-                DragGesture()
+                DragGesture(minimumDistance: 0)
                     .onChanged { value in
-                        isDragging = true
-                        let newWidth = sidebarWidth + value.translation.width
-                        // Constrain sidebar width between min and max
-                        sidebarWidth = min(max(newWidth, Theme.Sizes.sidebarMinWidth), Theme.Sizes.sidebarMaxWidth)
+                        if !isDragging {
+                            isDragging = true
+                        }
+
+                        // Edge case: Clamp drag offset to prevent extreme jumps
+                        let maxDragPerFrame = 50.0
+                        let clampedOffset = min(
+                            max(value.translation.width, -maxDragPerFrame),
+                            maxDragPerFrame
+                        )
+
+                        let newWidth = sidebarWidth + clampedOffset
+
+                        // Edge case: Constrain sidebar width between min and max
+                        let constrainedWidth = min(
+                            max(newWidth, Theme.Sizes.sidebarMinWidth),
+                            Theme.Sizes.sidebarMaxWidth
+                        )
+
+                        // Edge case: Validate before assigning
+                        if constrainedWidth.isFinite && constrainedWidth > 0 {
+                            sidebarWidth = constrainedWidth
+                        }
                     }
                     .onEnded { _ in
                         isDragging = false
+                        // Save sidebar width to UserDefaults
+                        saveSidebarWidth()
                     }
             )
+    }
+
+    // MARK: - Private Methods
+
+    private func loadSidebarWidth() {
+        // Load from UserDefaults (already initialized in @State)
+        let storedWidth = UserDefaults.standard.sidebarWidth
+
+        // Edge case: Validate loaded width
+        guard storedWidth > 0,
+              storedWidth.isFinite,
+              storedWidth >= Theme.Sizes.sidebarMinWidth,
+              storedWidth <= Theme.Sizes.sidebarMaxWidth else {
+            // Invalid stored value - use default
+            sidebarWidth = Theme.Sizes.sidebarWidth
+            return
+        }
+
+        sidebarWidth = storedWidth
+    }
+
+    private func saveSidebarWidth() {
+        // Edge case: Only save if value is valid
+        guard sidebarWidth > 0,
+              sidebarWidth.isFinite,
+              sidebarWidth >= Theme.Sizes.sidebarMinWidth,
+              sidebarWidth <= Theme.Sizes.sidebarMaxWidth else {
+            return
+        }
+
+        // Save to UserDefaults when drag ends
+        UserDefaults.standard.sidebarWidth = sidebarWidth
     }
 
     private var contentArea: some View {
