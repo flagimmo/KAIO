@@ -13,6 +13,7 @@ class ProcessManager: ObservableObject {
         let process = Process()
         let outputPipe = Pipe()
         let errorPipe = Pipe()
+        let inputPipe = Pipe()
 
         // Configure process
         process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
@@ -31,7 +32,8 @@ class ProcessManager: ObservableObject {
         }
         process.environment = environment
 
-        // Setup output handling
+        // Setup input/output handling
+        process.standardInput = inputPipe
         process.standardOutput = outputPipe
         process.standardError = errorPipe
 
