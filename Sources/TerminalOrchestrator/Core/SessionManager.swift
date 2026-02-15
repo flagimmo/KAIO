@@ -7,17 +7,25 @@ final class SessionManager {
     var projects: [Project] = []
     var activeSessionId: UUID?
 
-    init() {
-        // Create default project with initial session
-        let defaultSession = Session(name: "Default Session")
-        let defaultProject = Project(
-            name: "Default Project",
-            sessionIds: [defaultSession.id]
-        )
+    private let persistence = PersistenceService()
 
-        sessions[defaultSession.id] = defaultSession
-        projects = [defaultProject]
-        activeSessionId = defaultSession.id
+    init() {
+        loadFromDisk()
+
+        // Create default project if none exist
+        if projects.isEmpty {
+            let defaultSession = Session(name: "Default Session")
+            let defaultProject = Project(
+                name: "Default Project",
+                sessionIds: [defaultSession.id]
+            )
+
+            sessions[defaultSession.id] = defaultSession
+            projects = [defaultProject]
+            activeSessionId = defaultSession.id
+
+            saveToDisk()
+        }
     }
 
     // MARK: - Session Management
@@ -35,6 +43,7 @@ final class SessionManager {
             projects[0] = updatedProject
         }
 
+        saveToDisk()
         return session
     }
 
@@ -48,6 +57,8 @@ final class SessionManager {
         if activeSessionId == sessionId {
             activeSessionId = sessions.keys.first
         }
+
+        saveToDisk()
     }
 
     func updateSession(_ session: Session) {
@@ -78,6 +89,7 @@ final class SessionManager {
     func createProject(name: String) -> Project {
         let project = Project(name: name)
         projects.append(project)
+        saveToDisk()
         return project
     }
 
@@ -98,11 +110,14 @@ final class SessionManager {
            activeSessionId == deletedSessionId {
             activeSessionId = sessions.keys.first
         }
+
+        saveToDisk()
     }
 
     func updateProject(_ project: Project) {
         if let index = projects.firstIndex(where: { $0.id == project.id }) {
             projects[index] = project
+            saveToDisk()
         }
     }
 
@@ -155,7 +170,45 @@ final class SessionManager {
         session.addCommand(command)
         sessions[sessionId] = session
 
+        saveToDisk()
+
         return command
+    }
+
+    // MARK: - Persistence
+
+    func saveToDisk() {
+        do {
+            try persistence.saveSessions(sessions)
+            try persistence.saveProjects(projects)
+        } catch {
+            print("Failed to save data: \(error)")
+        }
+    }
+
+    func loadFromDisk() {
+        do {
+            sessions = try persistence.loadSessions()
+            projects = try persistence.loadProjects()
+
+            if let firstProject = projects.first,
+               let firstSessionId = firstProject.sessionIds.first {
+                activeSessionId = firstSessionId
+            }
+        } catch {
+            print("Failed to load data: \(error)")
+        }
+    }
+
+    func clearAll() {
+        do {
+            try persistence.clearAll()
+            sessions.removeAll()
+            projects.removeAll()
+            activeSessionId = nil
+        } catch {
+            print("Failed to clear data: \(error)")
+        }
     }
 }
 

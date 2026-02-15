@@ -9,21 +9,15 @@ struct OrchestratorApp: App {
 
     // MARK: - State
 
-    @StateObject private var appState = AppState()
-    @StateObject private var processManager = ProcessManager()
+    @State private var sessionManager = SessionManager()
 
     // MARK: - Scene
 
     var body: some Scene {
         WindowGroup("Terminal Orchestrator") {
-            MainView(
-                appState: appState,
-                processManager: processManager
-            )
-            .frame(
-                minWidth: Theme.Sizes.minWindowWidth,
-                minHeight: Theme.Sizes.minWindowHeight
-            )
+            MainView()
+                .environment(sessionManager)
+                .frame(minWidth: 800, minHeight: 600)
         }
     }
 }
